@@ -1,0 +1,13 @@
+{
+  "name": "career-with-chaithanya",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install",
+    "build": "cd backend && npm install && cd ../frontend && npm install && npm run build",
+    "vercel-build": "cd backend && npm install && cd ../frontend && npm install && npm run build",
+    "seed": "cd backend && node database/seed.js"
+  }
+}
