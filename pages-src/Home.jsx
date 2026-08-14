@@ -185,26 +185,38 @@ From building apps at MedMate, ERT, and Cigniti to mentoring 10,000+ students an
         }}>
           {/* Hero Left: Image */}
           <div style={{ textAlign: 'center', position: 'relative' }}>
-            <div style={{
-              position: 'relative',
-              maxWidth: '360px',
-              margin: '0 auto',
-              borderRadius: '20px',
-              padding: '6px',
-              background: 'linear-gradient(145deg, #e50914 0%, #1a1a2e 100%)',
-              boxShadow: '0 12px 40px rgba(229,9,20,0.3)'
-            }}>
-              <img
-                src="/chaithanya_hero.png"
-                alt="Chaitanya Madakasira"
-                style={{
-                  width: '100%',
-                  borderRadius: '16px',
-                  display: 'block',
-                  background: '#0d0d14'
-                }}
-              />
-            </div>
+            <a
+              href="/image.png"
+              target="_blank"
+              rel="noreferrer"
+              aria-label="Open hero image"
+              style={{ display: 'inline-block', textDecoration: 'none' }}
+            >
+              <div style={{
+                position: 'relative',
+                maxWidth: '520px',
+                margin: '0 auto',
+                borderRadius: '18px',
+                overflow: 'hidden',
+                background: '#050508',
+                boxShadow: '0 10px 30px rgba(0,0,0,0.45)'
+              }}>
+                <img
+                  src="/image.png"
+                  alt="Chaitanya Madakasira"
+                  onError={(e) => {
+                    e.currentTarget.onerror = null;
+                    e.currentTarget.src = '/chaithanya_hero.png';
+                  }}
+                  style={{
+                    width: '100%',
+                    display: 'block',
+                    background: '#0d0d14',
+                    objectFit: 'cover'
+                  }}
+                />
+              </div>
+            </a>
           </div>
 
           {/* Hero Right: Content */}
