@@ -58,7 +58,16 @@ export async function POST(request) {
         );
 
         const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || '127.0.0.1';
-        await query('INSERT INTO login_history (user_id, ip_address) VALUES ($1, $2)', [user.id, ip]);
+
+        try {
+            await query(
+                `INSERT INTO login_history (user_id, ip_address, logged_in_at)
+                 VALUES ($1, $2, NOW())`,
+                [user.id, ip]
+            );
+        } catch (historyError) {
+            console.warn('Login history insert failed:', historyError.message);
+        }
 
         const token = signToken({ userId: user.id, role: user.role, email: user.email });
         const isProduction = process.env.NODE_ENV === 'production';
