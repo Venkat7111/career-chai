@@ -88,6 +88,7 @@ export const challengeApi = {
     list: () => api.get('/challenges'),
     getStreak: () => api.get('/challenges/streak/my'),
     submit: (id, data) => api.post(`/challenges/${id}/submit`, data),
+    compile: (data) => api.post('/challenges/compile', data),
 };
 
 export const adminChallengeApi = {

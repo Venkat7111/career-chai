@@ -10,7 +10,7 @@ export async function GET() {
     try {
         const { rows } = await query(
             `SELECT c.*,
-              s.id AS submission_id, s.solution_code, s.notes,
+              s.id AS submission_id, s.solution_code, s.notes, s.language,
               s.status AS submission_status, s.admin_feedback, s.submitted_at,
               s.updated_at AS submission_updated_at
        FROM daily_challenges c

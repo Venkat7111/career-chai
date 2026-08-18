@@ -7,6 +7,82 @@ import Badge from '@/components/UI/Badge';
 import Modal from '@/components/UI/Modal';
 import { fmtDate, fmtDateTime } from '@/utils/helpers';
 
+const BOILERPLATE_TEMPLATES = {
+  javascript: `// JavaScript Solution
+function solution(s) {
+    // Write your code here
+    return "";
+}
+
+// Example usage:
+// console.log(solution("the sky is blue"));
+`,
+  python: `# Python Solution
+def solution(s: str) -> str:
+    # Write your code here
+    return ""
+
+# Example usage:
+# print(solution("the sky is blue"))
+`,
+  python3: `# Python 3 Solution
+def solution(s: str) -> str:
+    # Write your code here
+    return ""
+
+# Example usage:
+# print(solution("the sky is blue"))
+`,
+  java: `// Java Solution
+import java.util.*;
+
+public class Main {
+    public static String solution(String s) {
+        // Write your code here
+        return "";
+    }
+
+    public static void main(String[] args) {
+        // Test your solution here
+        System.out.println(solution("the sky is blue"));
+    }
+}
+`,
+  cpp: `// C++ Solution
+#include <iostream>
+#include <string>
+
+using namespace std;
+
+string solution(string s) {
+    // Write your code here
+    return "";
+}
+
+int main() {
+    // Test your solution here
+    cout << solution("the sky is blue") << endl;
+    return 0;
+}
+`,
+  c: `/* C Solution */
+#include <stdio.h>
+#include <string.h>
+
+void solution(char* s, char* result) {
+    /* Write your code here */
+    strcpy(result, "");
+}
+
+int main() {
+    char result[100];
+    solution("the sky is blue", result);
+    printf("%s\\n", result);
+    return 0;
+}
+`
+};
+
 export default function DailyChallenges() {
   const [challenges, setChallenges] = useState([]);
   const [streakData, setStreakData] = useState({ streak: 0, totalSubmitted: 0, approvedCount: 0, approvalRate: 0 });
@@ -18,6 +94,10 @@ export default function DailyChallenges() {
   const [selectedChallenge, setSelectedChallenge] = useState(null);
   const [solutionCode, setSolutionCode] = useState('');
   const [solutionNotes, setSolutionNotes] = useState('');
+  const [selectedLanguage, setSelectedLanguage] = useState('javascript');
+  const [stdinInput, setStdinInput] = useState('');
+  const [compilationOutput, setCompilationOutput] = useState(null);
+  const [compiling, setCompiling] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   const loadData = () => {
@@ -36,8 +116,55 @@ export default function DailyChallenges() {
 
   const handleOpenSolve = (c) => {
     setSelectedChallenge(c);
-    setSolutionCode(c.solution_code || '');
+    const savedLang = c.language || 'javascript';
+    setSelectedLanguage(savedLang);
     setSolutionNotes(c.notes || '');
+    setStdinInput('');
+    setCompilationOutput(null);
+    if (c.solution_code) {
+      setSolutionCode(c.solution_code);
+    } else {
+      setSolutionCode(BOILERPLATE_TEMPLATES[savedLang] || '');
+    }
+  };
+
+  const handleLanguageChange = (lang) => {
+    const prevLang = selectedLanguage;
+    setSelectedLanguage(lang);
+
+    const prevBoilerplate = BOILERPLATE_TEMPLATES[prevLang]?.trim();
+    const isTemplateOrEmpty = !solutionCode.trim() || solutionCode.trim() === prevBoilerplate;
+
+    if (isTemplateOrEmpty) {
+      setSolutionCode(BOILERPLATE_TEMPLATES[lang] || '');
+    }
+  };
+
+  const handleRunCode = async () => {
+    if (!solutionCode.trim()) {
+      toast.error('Please write some code first');
+      return;
+    }
+    setCompiling(true);
+    setCompilationOutput(null);
+    try {
+      const response = await challengeApi.compile({
+        language: selectedLanguage,
+        code: solutionCode,
+        stdin: stdinInput
+      });
+      setCompilationOutput(response.data);
+      if (response.data.run?.stderr) {
+        toast.error('Code execution finished with some errors!');
+      } else {
+        toast.success('Code executed successfully!');
+      }
+    } catch (err) {
+      toast.error(err.message || 'Sandbox execution failed');
+      setCompilationOutput({ error: err.message || 'Sandbox execution failed' });
+    } finally {
+      setCompiling(false);
+    }
   };
 
   const handleSubmitSolution = async (e) => {
@@ -49,6 +176,7 @@ export default function DailyChallenges() {
     setSubmitting(true);
     try {
       await challengeApi.submit(selectedChallenge.id, {
+        language: selectedLanguage,
         solution_code: solutionCode,
         notes: solutionNotes
       });
@@ -64,7 +192,7 @@ export default function DailyChallenges() {
 
   const filtered = challenges.filter(c => {
     const mSearch = c.title.toLowerCase().includes(search.toLowerCase()) ||
-                    c.description.toLowerCase().includes(search.toLowerCase());
+      c.description.toLowerCase().includes(search.toLowerCase());
     const mDiff = !filterDiff || c.difficulty === filterDiff;
     return mSearch && mDiff;
   });
@@ -266,59 +394,75 @@ export default function DailyChallenges() {
           onClose={() => setSelectedChallenge(null)}
           title={selectedChallenge.title}
           subtitle={`Difficulty: ${selectedChallenge.difficulty} | Challenge Date: ${fmtDate(selectedChallenge.challenge_date)}`}
-          maxWidth={720}
+          maxWidth={1200}
         >
-          <div style={{ marginBottom: 20 }}>
-            <h4 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: 6 }}>Problem Description:</h4>
-            <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.6, whiteSpace: 'pre-line', background: 'var(--surface-2)', padding: '12px', borderRadius: '8px', marginBottom: 14 }}>
-              {selectedChallenge.description}
+          <div className="challenge-split-container">
+            {/* Left Side: Question Pane */}
+            <div className="challenge-left-pane">
+              <div>
+                <h4 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: 6 }}>Problem Description:</h4>
+                <div style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: 1.6, whiteSpace: 'pre-line', background: 'var(--surface-2)', padding: '16px', borderRadius: '12px', marginBottom: 14 }}>
+                  {selectedChallenge.description}
+                </div>
+              </div>
+
+              {selectedChallenge.examples && (
+                <div>
+                  <h4 style={{ fontSize: '0.85rem', fontWeight: 700, marginBottom: 4 }}>Examples / Inputs:</h4>
+                  <pre style={{ fontSize: '0.82rem', background: '#0a0a12', padding: '12px', borderRadius: '8px', overflowX: 'auto', color: '#a5b4fc', fontFamily: 'monospace' }}>
+                    {selectedChallenge.examples}
+                  </pre>
+                </div>
+              )}
+
+              {selectedChallenge.constraints && (
+                <div>
+                  <h4 style={{ fontSize: '0.85rem', fontWeight: 700, marginBottom: 4 }}>Constraints:</h4>
+                  <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', background: 'var(--surface-2)', padding: '12px', borderRadius: '8px' }}>
+                    {selectedChallenge.constraints}
+                  </div>
+                </div>
+              )}
+
+              {selectedChallenge.admin_feedback && (
+                <div style={{ background: 'rgba(229,9,20,0.15)', border: '1px solid #e50914', padding: '16px', borderRadius: '12px', marginTop: 10 }}>
+                  <div style={{ fontWeight: 700, color: '#ff4d5a', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                    <MessageSquare size={14} /> Mentor Review Feedback:
+                  </div>
+                  <div style={{ fontSize: '0.85rem', color: '#fff' }}>
+                    {selectedChallenge.admin_feedback}
+                  </div>
+                </div>
+              )}
             </div>
 
-            {selectedChallenge.examples && (
-              <div style={{ marginBottom: 14 }}>
-                <h4 style={{ fontSize: '0.85rem', fontWeight: 700, marginBottom: 4 }}>Examples / Inputs:</h4>
-                <pre style={{ fontSize: '0.8rem', background: '#0a0a12', padding: '10px', borderRadius: '6px', overflowX: 'auto', color: '#a5b4fc' }}>
-                  {selectedChallenge.examples}
-                </pre>
-              </div>
-            )}
-
-            {selectedChallenge.constraints && (
-              <div style={{ marginBottom: 14 }}>
-                <h4 style={{ fontSize: '0.85rem', fontWeight: 700, marginBottom: 4 }}>Constraints:</h4>
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                  {selectedChallenge.constraints}
+            {/* Right Side: Compiler & Console Pane */}
+            <form onSubmit={handleSubmitSolution} className="challenge-right-pane">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 12 }}>
+                <div style={{ flex: 1 }}>
+                  <label className="form-label" style={{ fontSize: '0.72rem', marginBottom: 4 }}>Language Selector</label>
+                  <select
+                    className="form-select"
+                    style={{ padding: '8px 12px', fontSize: '0.85rem' }}
+                    value={selectedLanguage}
+                    onChange={(e) => handleLanguageChange(e.target.value)}
+                  >
+                    <option value="javascript">JavaScript</option>
+                    <option value="python">Python 3</option>
+                    <option value="java">Java</option>
+                    <option value="cpp">C++</option>
+                    <option value="c">C</option>
+                  </select>
                 </div>
-              </div>
-            )}
 
-            {selectedChallenge.admin_feedback && (
-              <div style={{ background: 'rgba(229,9,20,0.15)', border: '1px solid #e50914', padding: '12px', borderRadius: '8px', marginBottom: 16 }}>
-                <div style={{ fontWeight: 700, color: '#ff4d5a', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                  <MessageSquare size={14} /> Mentor Review Feedback:
-                </div>
-                <div style={{ fontSize: '0.85rem', color: '#fff' }}>
-                  {selectedChallenge.admin_feedback}
-                </div>
-              </div>
-            )}
-          </div>
-
-          <form onSubmit={handleSubmitSolution}>
-            <div className="form-group">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
-                <label className="form-label" style={{ margin: 0, fontWeight: 700 }}>
-                  Solution Code
-                </label>
-                
                 <label
-                  className="btn btn-sm btn-ghost"
-                  style={{ cursor: 'pointer', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: 6, color: 'var(--primary)', border: '1px solid rgba(229,9,20,0.3)', padding: '6px 12px' }}
+                  className="btn btn-secondary btn-sm"
+                  style={{ cursor: 'pointer', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: 6, padding: '10px 14px' }}
                 >
                   <Upload size={14} /> Upload Code File
                   <input
                     type="file"
-                    accept=".js,.py,.java,.cpp,.c,.html,.css,.json,.txt,.md"
+                    accept=".js,.py,.java,.cpp,.c,.txt"
                     style={{ display: 'none' }}
                     onChange={(e) => {
                       const file = e.target.files?.[0];
@@ -334,44 +478,104 @@ export default function DailyChallenges() {
                 </label>
               </div>
 
-              <textarea
-                className="form-textarea"
-                rows={10}
-                placeholder="// Type code OR click 'Upload Code File' above to import your solution...
-function solution(input) {
-  // your implementation
-  return result;
-}"
-                value={solutionCode}
-                onChange={(e) => setSolutionCode(e.target.value)}
-                required
-                style={{ fontFamily: 'Consolas, Monaco, monospace', fontSize: '0.85rem', background: '#08080d', color: '#48cfad', lineHeight: 1.5 }}
-              />
-            </div>
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                <label className="form-label" style={{ fontSize: '0.72rem', marginBottom: 4 }}>Solution Code</label>
+                <textarea
+                  className="form-textarea"
+                  placeholder="// Paste or write code here..."
+                  value={solutionCode}
+                  onChange={(e) => setSolutionCode(e.target.value)}
+                  required
+                  style={{
+                    fontFamily: 'Consolas, Monaco, monospace',
+                    fontSize: '0.85rem',
+                    background: '#08080d',
+                    color: '#48cfad',
+                    lineHeight: 1.5,
+                    flex: 1,
+                    minHeight: '280px',
+                    borderColor: 'var(--border)'
+                  }}
+                />
+              </div>
 
-            <div className="form-group">
-              <label className="form-label">Explanation & Time/Space Complexity Notes (Optional)</label>
-              <input
-                className="form-input"
-                placeholder="e.g. Time complexity O(N), Space complexity O(1)"
-                value={solutionNotes}
-                onChange={(e) => setSolutionNotes(e.target.value)}
-              />
-            </div>
+              <div>
+                <label className="form-label" style={{ fontSize: '0.72rem', marginBottom: 4 }}>Complexity / Execution Notes (Optional)</label>
+                <input
+                  className="form-input"
+                  placeholder="e.g. Time complexity O(N), Space complexity O(1)"
+                  value={solutionNotes}
+                  onChange={(e) => setSolutionNotes(e.target.value)}
+                  style={{ padding: '8px 12px', fontSize: '0.82rem' }}
+                />
+              </div>
 
-            <button
-              type="submit"
-              className="btn btn-primary w-full"
-              style={{ padding: '12px', justifyContent: 'center' }}
-              disabled={submitting}
-            >
-              {submitting ? <span className="spinner" /> : <Send size={16} />}
-              {submitting ? 'Submitting...' : selectedChallenge.submission_id ? 'Update & Resubmit Solution' : 'Submit Solution Code'}
-            </button>
-          </form>
+              {/* Run Code Custom Inputs Panel */}
+              <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 4 }}>
+                <input
+                  className="form-input"
+                  placeholder="Custom inputs stdin (e.g. input parameter values)..."
+                  value={stdinInput}
+                  onChange={(e) => setStdinInput(e.target.value)}
+                  style={{ flex: 1, padding: '8px 12px', fontSize: '0.82rem', fontFamily: 'monospace' }}
+                />
+
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  onClick={handleRunCode}
+                  disabled={compiling}
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, height: '38px', padding: '0 16px' }}
+                >
+                  {compiling ? <span className="spinner" style={{ width: 14, height: 14 }} /> : <Code size={14} />}
+                  Run Code
+                </button>
+              </div>
+
+              {/* Console Execution Display logs */}
+              {compilationOutput && (
+                <div className="compiler-console">
+                  <div className="compiler-console-header">
+                    <span>Integrated Execution Console</span>
+                    <span style={{ color: compilationOutput.run?.stderr ? 'var(--danger)' : 'var(--success)', fontWeight: 700 }}>
+                      {compilationOutput.run?.stderr ? 'Execution Error' : `Exit Code: ${compilationOutput.run?.code ?? 0}`}
+                    </span>
+                  </div>
+                  <div className="compiler-console-body">
+                    {compilationOutput.run?.stdout && (
+                      <div style={{ color: '#a5b4fc', marginBottom: 6 }}>
+                        <strong>Output (stdout):</strong>
+                        <pre style={{ marginTop: 4, whiteSpace: 'pre-wrap', fontFamily: 'monospace' }}>{compilationOutput.run.stdout}</pre>
+                      </div>
+                    )}
+                    {compilationOutput.run?.stderr && (
+                      <div style={{ color: '#ff4d5a' }}>
+                        <strong>Error (stderr):</strong>
+                        <pre style={{ marginTop: 4, whiteSpace: 'pre-wrap', fontFamily: 'monospace' }}>{compilationOutput.run.stderr}</pre>
+                      </div>
+                    )}
+                    {!compilationOutput.run?.stdout && !compilationOutput.run?.stderr && (
+                      <div style={{ color: 'var(--text-muted)' }}>
+                        {compilationOutput.error || 'Execution completed with no printed output.'}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <button
+                type="submit"
+                className="btn btn-primary"
+                style={{ width: '100%', padding: '12px', justifyContent: 'center' }}
+                disabled={submitting}
+              >
+                {submitting ? <span className="spinner" /> : <Send size={16} />}
+                {submitting ? 'Submitting...' : selectedChallenge.submission_id ? 'Update & Resubmit Solution' : 'Submit Solution Code'}
+              </button>
+            </form>
+          </div>
         </Modal>
       )}
     </div>
   );
 }
-

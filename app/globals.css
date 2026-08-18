@@ -961,3 +961,66 @@ tbody td {
 .font-bold { font-weight: 700; }
 .w-full { width: 100%; }
 .truncate { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ─── Challenge Split Screen Layout ────────────────────────── */
+.challenge-split-container {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.2fr);
+  gap: 24px;
+  height: calc(85vh - 80px);
+  min-height: 500px;
+}
+
+.challenge-left-pane {
+  overflow-y: auto;
+  padding-right: 8px;
+  display: flex;
+  flex-direction: column;
+}
+
+.challenge-right-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  height: 100%;
+}
+
+.compiler-console {
+  background: #06060a;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  margin-top: 12px;
+  overflow: hidden;
+}
+
+.compiler-console-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 14px;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.compiler-console-body {
+  padding: 12px 14px;
+  font-family: Consolas, Monaco, monospace;
+  font-size: 0.82rem;
+  white-space: pre-wrap;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+@media (max-width: 900px) {
+  .challenge-split-container {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+  .challenge-left-pane {
+    height: auto;
+    overflow-y: visible;
+  }
+}
